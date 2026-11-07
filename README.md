@@ -13,14 +13,19 @@ CTF 杂项（Misc）方向的小工具集，随学习进度逐步增加。
 - 缺 padding（末尾 `=`）时自动补齐
 - URL-safe 变体（`-` `_`）自动归一为 `+` `/`
 - `--auto` 连续解多层，直到解不动为止——应对套娃题
+- `--auto` 能识别中间藏的 ROT13 层（如 picoCTF「13」），也可用 `-r` 手动翻转
+- 误判防护：普通英文不会被硬解成乱码；解出二进制时只认已知文件头（zip/png/pdf…）
 
 ```bash
 python base64_tool.py -e "hello"                  # 编码
 python base64_tool.py -d "aGVsbG8="               # 解码一层
 python base64_tool.py --auto "Y0dsamIwTlVS..."    # 连续解到底
+python base64_tool.py -r "cvpbPGS{...}"           # ROT13（正反同一场）
 python base64_tool.py -d -f flag.txt              # 从文件读
 echo "aGVsbG8=" | python base64_tool.py -d -      # 从标准输入读
 ```
+
+回归测试：`python -m unittest discover -s tests -v`
 
 解出二进制（图片、压缩包等）时会写进 `out.bin`，不会把终端刷乱。
 
@@ -53,7 +58,9 @@ python http_log_parser.py access.log --top 5
 ├── README.md
 ├── samples/
 │   └── sample_access.log
-└── src/          # 工具脚本
-    ├── base64_tool.py
-    └── http_log_parser.py
+├── src/          # 工具脚本
+│   ├── base64_tool.py
+│   └── http_log_parser.py
+└── tests/        # 回归测试
+    └── test_base64_tool.py
 ```
