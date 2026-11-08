@@ -21,6 +21,14 @@ import re
 import sys
 from collections import Counter, defaultdict
 
+# Windows 下把输出接给管道/重定向时，Python 会退回 GBK 编码，
+# 遇到 GBK 里没有的符号（比如 ⚠）直接抛 UnicodeEncodeError 把程序打断。
+# 两个处理：① 输出符号只用 GBK 能表示的；② 万一还有漏网的，降级成 "?" 而不是崩掉。
+try:
+    sys.stdout.reconfigure(errors="replace")
+except Exception:
+    pass
+
 # Apache/Nginx combined 格式
 LOG_RE = re.compile(
     r'(?P<ip>\S+)\s+\S+\s+\S+\s+\[(?P<time>[^\]]+)\]\s+'
@@ -145,7 +153,7 @@ def main() -> int:
             continue
         rate = s["err"] / s["total"] * 100
         kinds = "、".join(k for k, _ in s["hits"].most_common())
-        flag = " ⚠" if s["win"] else "  "
+        flag = "[!]" if s["win"] else "   "
         print(f"{flag} {ip:<16} 请求 {s['total']:>3}  失败 {s['err']:>3}（{rate:>5.1f}%）  命中 {score} 次")
         print(f"  {'':16} └─ {kinds}")
         shown += 1
