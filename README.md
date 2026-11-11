@@ -47,9 +47,25 @@ python http_log_parser.py access.log --top 5
 
 附 `samples/sample_access.log` 作为测试样本（全部使用 RFC 5737 文档保留网段，非真实 IP）。
 
-## 规划中
+### `src/file_checker.py` — 文件头识别（magic number）
 
-- `file_checker.py` — 文件头识别（magic number）
+回答「这到底是什么」，并且给出**依据**：命中的魔数、所在偏移、文件大小。
+
+```bash
+python file_checker.py dolls.jpg                  # 判定 + 依据
+python file_checker.py a.jpg b.zip c.txt          # 一次看多个
+python file_checker.py dolls.jpg --scan           # 找出所有内嵌签名及偏移
+python file_checker.py flag.txt --head 16         # 只看前 16 字节 hex，不做判定
+```
+
+比系统 `file` 多四个能力：
+
+- **扩展名不符会报警**。`dolls.jpg` 实际是 PNG 时直接提示 `扩展名 .jpg 与实际类型 .png 不一致`——这是 CTF 杂项最常见的第一道坎
+- **认无 BOM 的 UTF-16**。`file` 对这类文件只报 `data`，但 `picoCTF{...}` 那种每字符补 `00` 的 flag 正是它；判据是零字节是否隔位分布
+- **报内嵌签名偏移**，相当于一个极简 binwalk。`dolls.jpg` 会报出 `0x0004286C ZIP archive`（= 272492），和 binwalk 完全一致
+- **噪声有门槛**。`MZ`、`ICO`、UTF-16 BOM 这些 2-4 字节签名在压缩数据里遍地都是，默认不报；要看全量加 `--scan-all`。注意门槛不能按长度一刀切——`PK\x03\x04` 也是 4 字节，但那是套娃题要找的东西
+
+魔数表覆盖 20 余种格式：PNG/JPEG/GIF/BMP/ICO、ZIP/GZIP/BZIP2/XZ/7z/RAR、PDF、ELF/PE、Java class、SQLite、WAV/AVI（RIFF 容器）、MP4/MOV（`ftyp` 固定偏移 4）、OLE2（旧版 Office）、PEM、shebang，以及带 BOM 的各路文本。
 
 ## 目录结构
 
@@ -60,7 +76,11 @@ python http_log_parser.py access.log --top 5
 │   └── sample_access.log
 ├── src/          # 工具脚本
 │   ├── base64_tool.py
+│   ├── file_checker.py
 │   └── http_log_parser.py
 └── tests/        # 回归测试
-    └── test_base64_tool.py
+    ├── test_base64_tool.py
+    └── test_file_checker.py
 ```
+
+回归测试全部用内存里现造的字节，不依赖样本文件：`python -m unittest discover -s tests -v`
